@@ -3,6 +3,7 @@
 #include <string>
 #include <filesystem>
 #include <wx/wx.h>
+#include <wx/colordlg.h>
 #include "custom_image_class.hpp"
 
 enum Ids {
@@ -18,6 +19,9 @@ enum Ids {
    zoom_in_button,
    zoom_out_button,
    show_info_panel,
+   change_info_panel_color,
+   change_background_color,
+   fit_image_to_window,
    index_display,
 };
 
@@ -61,6 +65,9 @@ public:
    bool flip_image_horizontally;
    bool flip_image_vertically;
 
+   wxColor background_color;
+   wxColor info_panel_color;
+
    wxMenuBar* menu_bar;
 
    wxStaticBitmap* currently_displayed_image;
@@ -92,18 +99,35 @@ public:
 
 private:
    void onView_ShowInfoPanel(wxCommandEvent& ev) {
-      if (this->info_panel->IsShown()) {
+      if (ev.IsChecked()) {
          this->info_panel->Hide();
          this->main_sizer->Detach(info_panel);
          this->main_sizer->Layout();
       } else {
-         main_sizer->Insert(info_panel_in_main_sizer_index, info_panel, 0, wxEXPAND, 5);
+         this->main_sizer->Insert(info_panel_in_main_sizer_index, info_panel, 0, wxEXPAND, 5);
          this->info_panel->Show();
          this->main_sizer->Layout();
       }
    }
 
-   void fitImageToScreen() {}
+   void onView_ChangeBackgroundColor(wxCommandEvent& ev) {
+      wxColourDialog dialog(this);
+      if (dialog.ShowModal() == wxID_OK) {
+         this->background_color = dialog.GetColourData().GetColour();
+         this->SetBackgroundColour(background_color);
+      }
+   }
+
+   void onView_ChangeInfoPanelColor(wxCommandEvent& ev) {
+      wxColourDialog dialog(this);
+      if (dialog.ShowModal() == wxID_OK) {
+         this->info_panel_color = dialog.GetColourData().GetColour();
+         this->info_panel->SetBackgroundColour(info_panel_color);
+      }
+   }
+
+   void fitImageToScreen(CustomImage& image) {
+   }
 
    void onFile_Open(wxCommandEvent& ev) {
       wxFileDialog openFileDialog(
@@ -194,6 +218,9 @@ private:
       });
    }
 
+   void fitImageToFrame(CustomImage& image) {
+   }
+
    void initImages() {
       // add path here:
       std::string directory_path = "";
@@ -242,11 +269,14 @@ MainFrame::MainFrame(const wxString& title, const wxPoint& pos, const wxSize& si
    this->flip_image_vertically = false;
    this->current_image_index = 0;
    this->info_panel_in_main_sizer_index = 0;
+   this->info_panel_color = wxColor(255,0,255);
+   this->background_color = wxColor(0,0,0);
 
    this->currently_displayed_image = nullptr;
 
    this->info_panel = new wxPanel(this, Ids::info_panel);
-   info_panel->SetBackgroundColour(wxColor(255,0,255));
+   info_panel->SetBackgroundColour(info_panel_color);
+
    this->image_panel = new wxPanel(this, Ids::image_panel);
 
    this->menu_bar = new wxMenuBar();
@@ -256,10 +286,16 @@ MainFrame::MainFrame(const wxString& title, const wxPoint& pos, const wxSize& si
    file_menu->AppendSeparator();
    file_menu->Append(wxID_EXIT, "&Exit\tAlt-X");
 
+   wxMenu* edit_menu = new wxMenu();
+   edit_menu->AppendCheckItem(Ids::fit_image_to_window, "&Fit Image To Window");
+
    wxMenu* view_menu = new wxMenu();
-   view_menu->Append(Ids::show_info_panel, "&Show Info Bar");
+   view_menu->AppendCheckItem(Ids::show_info_panel, "&Show Info Bar");
+   view_menu->Append(Ids::change_info_panel_color, "&Change Info Panel Color");
+   view_menu->Append(Ids::change_background_color, "&Change Background Color");
 
    menu_bar->Append(file_menu, "&File");
+   menu_bar->Append(edit_menu, "&Edit");
    menu_bar->Append(view_menu, "&View");
 
    SetMenuBar(menu_bar);
@@ -268,6 +304,8 @@ MainFrame::MainFrame(const wxString& title, const wxPoint& pos, const wxSize& si
    Bind(wxEVT_MENU, &MainFrame::onFile_Exit, this, wxID_EXIT);
 
    Bind(wxEVT_MENU, &MainFrame::onView_ShowInfoPanel, this, Ids::show_info_panel);
+   Bind(wxEVT_MENU, &MainFrame::onView_ChangeInfoPanelColor, this, Ids::change_info_panel_color);
+   Bind(wxEVT_MENU, &MainFrame::onView_ChangeBackgroundColor, this, Ids::change_background_color);
 
    this->main_sizer = new wxBoxSizer(wxVERTICAL);
    wxBoxSizer* info_panel_sizer = new wxBoxSizer(wxHORIZONTAL);
