@@ -11,7 +11,7 @@ public:
    float angle;
    bool flip_vertically, flip_horizontally;
 
-   CustomImage(std::string& image_path) : bitmap(image_path, wxBITMAP_TYPE_PNG), display_bitmap(image_path, wxBITMAP_TYPE_PNG) {
+   CustomImage(std::string& image_path) : bitmap(image_path, wxBITMAP_TYPE_ANY), display_bitmap(image_path, wxBITMAP_TYPE_ANY) {
       this->zoom_amount = 1.f;
       this->angle = 0.f;
       this->flip_vertically = false;

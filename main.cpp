@@ -27,7 +27,7 @@ std::vector<std::string> returnImagePathsFromGivenDirectory(std::string& directo
       if (!entry.is_regular_file()) {
          continue;
       }
-      if (entry.path().extension() == ".png") {
+      if (entry.path().extension() == ".png" || entry.path().extension() == ".jpg") {
          file_strings.push_back(entry.path());
       }
    }
@@ -57,6 +57,7 @@ class MainFrame : public wxFrame {
 public:
    float zoom_amount;
    int current_image_index;
+   unsigned int info_panel_in_main_sizer_index;
    bool flip_image_horizontally;
    bool flip_image_vertically;
 
@@ -91,7 +92,15 @@ public:
 
 private:
    void onView_ShowInfoPanel(wxCommandEvent& ev) {
-      std::cout << "m\n";
+      if (this->info_panel->IsShown()) {
+         this->info_panel->Hide();
+         this->main_sizer->Detach(info_panel);
+         this->main_sizer->Layout();
+      } else {
+         main_sizer->Insert(info_panel_in_main_sizer_index, info_panel, 0, wxEXPAND, 5);
+         this->info_panel->Show();
+         this->main_sizer->Layout();
+      }
    }
 
    void fitImageToScreen() {}
@@ -186,7 +195,7 @@ private:
    }
 
    void initImages() {
-      // add path here
+      // add path here:
       std::string directory_path = "";
       std::vector<std::string> image_paths = returnImagePathsFromGivenDirectory(directory_path);
 
@@ -232,6 +241,7 @@ MainFrame::MainFrame(const wxString& title, const wxPoint& pos, const wxSize& si
    this->flip_image_horizontally = true;
    this->flip_image_vertically = false;
    this->current_image_index = 0;
+   this->info_panel_in_main_sizer_index = 0;
 
    this->currently_displayed_image = nullptr;
 
