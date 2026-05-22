@@ -18,7 +18,7 @@ enum Ids {
    flip_vertically_button,
    zoom_in_button,
    zoom_out_button,
-   show_info_panel,
+   hide_info_panel,
    change_info_panel_color,
    change_background_color,
    fit_image_to_window,
@@ -64,6 +64,7 @@ public:
    unsigned int info_panel_in_main_sizer_index;
    bool flip_image_horizontally;
    bool flip_image_vertically;
+   bool fit_image_to_window;
 
    wxColor background_color;
    wxColor info_panel_color;
@@ -98,7 +99,7 @@ public:
    }
 
 private:
-   void onView_ShowInfoPanel(wxCommandEvent& ev) {
+   void onView_HideInfoPanel(wxCommandEvent& ev) {
       if (ev.IsChecked()) {
          this->info_panel->Hide();
          this->main_sizer->Detach(info_panel);
@@ -126,7 +127,14 @@ private:
       }
    }
 
-   void fitImageToScreen(CustomImage& image) {
+   void onEdit_FitImageToWindow(wxCommandEvent& ev) {
+      if (ev.IsChecked()) {
+         this->fit_image_to_window = true;
+         fitImageToFrame(images[current_image_index]);
+         setImageAndUpdate();
+      } else {
+         this->fit_image_to_window = false;
+      }
    }
 
    void onFile_Open(wxCommandEvent& ev) {
@@ -166,11 +174,17 @@ private:
    void initButtonCommands() {
       previous_button->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) mutable {
          jumpToPreviousImages(this->images, this->current_image_index, 1);
+         if (this->fit_image_to_window) {
+            fitImageToFrame(images[current_image_index]);
+         }
          setImageAndUpdate();
          updateDisplayIndexText();
       });
       next_button->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) mutable {
          jumpToNextImages(this->images, this->current_image_index, 1);
+         if (this->fit_image_to_window) {
+            fitImageToFrame(images[current_image_index]);
+         }
          setImageAndUpdate();
          updateDisplayIndexText();
       });
@@ -219,6 +233,29 @@ private:
    }
 
    void fitImageToFrame(CustomImage& image) {
+      auto window_dimensions = this->GetSize();
+      double window_ratio = static_cast<double>(window_dimensions.GetWidth()) / static_cast<double>(window_dimensions.GetHeight());
+      
+      // sets this variable to the info panel height only if shown. if not, it remains 0.
+      int info_panel_height = 0;
+      if (info_panel->IsShown()) {
+         info_panel_height = this->info_panel->GetSize().GetHeight();
+      }
+
+      wxImage img = image.display_bitmap.ConvertToImage();
+      double image_ratio = static_cast<double>(img.GetWidth()) / static_cast<double>(img.GetHeight());
+
+      if (image_ratio > window_ratio) {
+         int width = (this->GetSize().GetWidth());
+         int height = width / image_ratio;
+         img = img.Scale(width, height);
+         image.display_bitmap = wxBitmap(img);
+      } else {
+         int height = (this->GetSize().GetHeight() - info_panel_height);
+         int width = height * image_ratio;
+         img = img.Scale(width, height);
+         image.display_bitmap = wxBitmap(img);
+      }
    }
 
    void initImages() {
@@ -253,7 +290,7 @@ private:
 };
 
 wxBEGIN_EVENT_TABLE(MainFrame, wxFrame)
-EVT_MENU(Ids::show_info_panel, MainFrame::onView_ShowInfoPanel)
+EVT_MENU(Ids::hide_info_panel, MainFrame::onView_HideInfoPanel)
 wxEND_EVENT_TABLE();
 
 bool MyApp::OnInit() {
@@ -267,6 +304,7 @@ MainFrame::MainFrame(const wxString& title, const wxPoint& pos, const wxSize& si
    this->zoom_amount = 1.5f;
    this->flip_image_horizontally = true;
    this->flip_image_vertically = false;
+   this->fit_image_to_window = false;
    this->current_image_index = 0;
    this->info_panel_in_main_sizer_index = 0;
    this->info_panel_color = wxColor(255,0,255);
@@ -290,7 +328,7 @@ MainFrame::MainFrame(const wxString& title, const wxPoint& pos, const wxSize& si
    edit_menu->AppendCheckItem(Ids::fit_image_to_window, "&Fit Image To Window");
 
    wxMenu* view_menu = new wxMenu();
-   view_menu->AppendCheckItem(Ids::show_info_panel, "&Show Info Bar");
+   view_menu->AppendCheckItem(Ids::hide_info_panel, "&Hide Info Bar");
    view_menu->Append(Ids::change_info_panel_color, "&Change Info Panel Color");
    view_menu->Append(Ids::change_background_color, "&Change Background Color");
 
@@ -303,7 +341,9 @@ MainFrame::MainFrame(const wxString& title, const wxPoint& pos, const wxSize& si
    Bind(wxEVT_MENU, &MainFrame::onFile_Open, this, wxID_OPEN);
    Bind(wxEVT_MENU, &MainFrame::onFile_Exit, this, wxID_EXIT);
 
-   Bind(wxEVT_MENU, &MainFrame::onView_ShowInfoPanel, this, Ids::show_info_panel);
+   Bind(wxEVT_MENU, &MainFrame::onEdit_FitImageToWindow, this, Ids::fit_image_to_window);
+
+   Bind(wxEVT_MENU, &MainFrame::onView_HideInfoPanel, this, Ids::hide_info_panel);
    Bind(wxEVT_MENU, &MainFrame::onView_ChangeInfoPanelColor, this, Ids::change_info_panel_color);
    Bind(wxEVT_MENU, &MainFrame::onView_ChangeBackgroundColor, this, Ids::change_background_color);
 
